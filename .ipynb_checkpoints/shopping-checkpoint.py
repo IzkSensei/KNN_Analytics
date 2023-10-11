@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly as py
-
+from sklearn.metrics import f1_score, roc_auc_score, recall_score, precision_score
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 
@@ -33,13 +33,9 @@ def main():
     X_test = np.array(X_test)
     y_test = np.array(y_test)
     
-    print(y_train[0])
-    print(y_train)
-    
-    print(X_test.shape)
     # Train model and make predictions
     model = train_model(X_train, y_train)
-    print("model: ",model)
+    #model = train_model_lib(X_train, y_train)
     predictions = model.predict(X_test)
     sensitivity, specificity = evaluate(y_test, predictions)
 
@@ -60,12 +56,9 @@ def load_data(filename):
     dataset['VisitorType'] = dataset['VisitorType'].apply(lambda x: 1 if x=='Returning_Visitor' else 0).astype(int)
     dataset['Weekend'] = dataset['Weekend'].apply(lambda x: 1 if x == True else 0).astype(int)
     dataset['Revenue'] = dataset['Revenue'].apply(lambda x: 1 if x == True else 0).astype(int)
+
     
-    #get_statistics(dataset)
-    
-    # getting dependent and independent variables
     x = dataset
-    # removing the target column revenue from x
     x = x.drop(['Revenue'], axis = 1)
 
     #LogScale:
@@ -73,9 +66,8 @@ def load_data(filename):
 
     y = dataset['Revenue']
 
-    # checking the shapes
-    print("Shape of x:", x.shape)
-    print("Shape of y:", y.shape)
+    print("Shape of x", x.shape)
+    print("Shape of y", y.shape)
     
     return x,y
     raise NotImplementedError
@@ -84,9 +76,7 @@ def load_data(filename):
 def train_model(evidence, labels):
     evidence = np.array(evidence)
     labels = np.array(labels)
-    
-    #clf = KNeighborsClassifier() 
-    #clf.fit(evidence,labels)
+
     clf = KNN(k=5)
     clf.fit(evidence, labels)
     return clf
@@ -95,34 +85,50 @@ def train_model(evidence, labels):
     raise NotImplementedError
 
 
-def evaluate(labels, predictions):
-    acc = np.sum(predictions == labels) / len(labels)
-    print('Accuracy: %.3f' %acc)
+def train_model_lib(evidence, labels):
+    evidence = np.array(evidence)
+    labels = np.array(labels)
+    
+    clf = KNeighborsClassifier() 
+    clf.fit(evidence,labels)
+    return clf
+
     
     raise NotImplementedError
 
 
-def get_statistics(dataset):
     
-    print(dataset.head())
-    print(dataset.describe())
-    print(dataset.info())
-    print(dataset.isna().sum())
-
-    pairplot = sns.pairplot(dataset, vars = ['Administrative', 'Administrative_Duration', 'Informational',
-                                             'Informational_Duration', 'ProductRelated', 'ProductRelated_Duration',
-                                             'BounceRates', 'ExitRates', 'PageValues', 'SpecialDay'],hue = 'Revenue')
-    fig1 = pairplot.get_figure()
-    fig1.savefig("snspairplot.png") 
+def evaluate(labels, predictions):
     
-    heatmap = sns.heatmap(dataset.iloc[:,0:-1].corr('pearson'), ax=ax, annot=True)
-    fig1 = heatmap.get_figure()
-    fig1.savefig("heatmap.png")
+    labels = np.array(labels)
+    predictions = np.array(predictions)
+    tp = sum((labels == 1) & (predictions == 1))
+    fn = sum((labels == 1) & (predictions == 0))
+    fp = sum((labels == 0) & (predictions == 1))
+    tn = sum((labels == 0) & (predictions == 0))
+    print(labels)
+    print(tp)
+    tpr = tp / (tp + fn)
+    tnr = tn / (fp + tn)
+    
+    acc = np.sum(predictions == labels) / len(labels)
+    print('Accuracy: %.3f' %acc)
+    fiscore = f1_score(labels, predictions)
+    roc_auc = roc_auc_score(labels, predictions)
+    recall = recall_score(labels, predictions)
+    precision = precision_score(labels, predictions)
 
+    print('Precision: %.3f' % precision)
+    print('Recall: %.3f' % recall)
+    print("ROC-AUC Score:", roc_auc)
+    print("F1 Score:", fiscore)
+    
+    return tpr,tnr
+    raise NotImplementedError
 
 
 def euclidean_distance(x1, x2):
-    distance = np.linalg.norm(x1 - x2)#np.sqrt(np.sum((x1-x2)**2))
+    distance = np.linalg.norm(x1 - x2)
     return distance
 
 class KNN:
@@ -132,7 +138,6 @@ class KNN:
     def fit(self, X, y):
         self.X_train = X
         self.y_train = y
-        print("selfytrain-----",self.y_train.shape)
 
     def predict(self, X):
         predictions = [self._predict(x) for x in X]
